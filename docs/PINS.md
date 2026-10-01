@@ -10,17 +10,18 @@ Everything size/sha256 is fail-closed: a mismatch aborts setup.
   Never hardcode shard hashes — shard 1 was already replaced once
   (compress_ratios-corrected, sha256 `16e01780…`).
 
-Snapshot of manifest.json contents as of 2026-09-30 (for reference; the repo
+Snapshot of manifest.json contents as of 2026-10-01 (files renamed for the Hub's
+GGUF picker that day; sizes and sha256 unchanged) (for reference; the repo
 wins at run time):
 
 | file | size_bytes | sha256 |
 |---|---|---|
-| `Qwen3.8-Flash-Next-Mooney-00001-of-00004.gguf` | 1,558,150,336 | `16e01780d1d056ae832c463b37ce57afc67b51cef7753dd4fce9105d18d484ce` |
-| `Qwen3.8-Flash-Next-Mooney-00002-of-00004.gguf` | 54,400,261,312 | `ab71044a4099ffaee6c4d94c4255ce2fcc2c32f6ffecda85ea8ecf10d9ad1a0d` |
-| `Qwen3.8-Flash-Next-Mooney-00003-of-00004.gguf` | 24,950,721,696 | `e9aeae2b04ee9975311a59a1cc2700ed29c1f67510c3b3d3ff4a205789a05480` |
-| `Qwen3.8-Flash-Next-Mooney-00004-of-00004.gguf` | 11,083,744,384 | `931df104d8a3b3a850837c8b9d712bf9493e5726941a33d4f29051db839b03fd` |
-| `mmproj-Qwen3.8-Flash-Next-Mooney-BF16.gguf` | 907,542,784 | `375f156fdc1232f994c42f43813861fac4fdc791f0440a36c85e87b6907a7eee` |
-| `mtp-Qwen3.8-Flash-Next-Q8_0.gguf` | 2,786,568,256 | `5ff54097406a905cf3a724c709124ceb0e3e10235ee862298969e91c96fa96e6` |
+| `Qwen3.8-Flash-Next-Mooney-PQ2_0-00001-of-00004.gguf` | 1,558,150,336 | `16e01780d1d056ae832c463b37ce57afc67b51cef7753dd4fce9105d18d484ce` |
+| `Qwen3.8-Flash-Next-Mooney-PQ2_0-00002-of-00004.gguf` | 54,400,261,312 | `ab71044a4099ffaee6c4d94c4255ce2fcc2c32f6ffecda85ea8ecf10d9ad1a0d` |
+| `Qwen3.8-Flash-Next-Mooney-PQ2_0-00003-of-00004.gguf` | 24,950,721,696 | `e9aeae2b04ee9975311a59a1cc2700ed29c1f67510c3b3d3ff4a205789a05480` |
+| `Qwen3.8-Flash-Next-Mooney-PQ2_0-00004-of-00004.gguf` | 11,083,744,384 | `931df104d8a3b3a850837c8b9d712bf9493e5726941a33d4f29051db839b03fd` |
+| `mmproj-Qwen3.8-Flash-Next-Mooney.gguf` (BF16) | 907,542,784 | `375f156fdc1232f994c42f43813861fac4fdc791f0440a36c85e87b6907a7eee` |
+| `mtp-Qwen3.8-Flash-Next.gguf` (Q8_0) | 2,786,568,256 | `5ff54097406a905cf3a724c709124ceb0e3e10235ee862298969e91c96fa96e6` |
 
 The MTP head row is already in the manifest. If it is ever missing (older
 manifest snapshots), the script aborts unless `--mtp-source upstream` is
@@ -30,7 +31,7 @@ passed (see below).
 
 | field | value |
 |---|---|
-| local file | `mtp-Qwen3.8-Flash-Next-Q8_0.gguf` — manifest-listed in the Mooney repo (**primary**) |
+| local file | `mtp-Qwen3.8-Flash-Next.gguf` (Q8_0) — manifest-listed in the Mooney repo (**primary**) |
 | fallback source | `unsloth/Qwen3.8-Flash-Next-GGUF` @ `38bb39ee97821de2c9009abb7e93950eec396e66`, repo path `MTP/mtp-Qwen3.8-Flash-Next-shared-Q8_0.gguf` (`--mtp-source upstream`) |
 | size | 2,786,568,256 B |
 | sha256 | `5ff54097406a905cf3a724c709124ceb0e3e10235ee862298969e91c96fa96e6` |

@@ -22,7 +22,7 @@ Model weights are NOT distributed in this repository. They are downloaded at
 setup time from the official repository DJLougen/Qwen3.8-Flash-Next-Mooney and
 remain under the Qwen Community License 1.0 (derived work of
 Qwen/Qwen3.8-Flash-Next). The MTP draft head ships in that same repo as
-mtp-Qwen3.8-Flash-Next-Q8_0.gguf; a fallback fetch path also reads the
+mtp-Qwen3.8-Flash-Next.gguf (Q8_0); a fallback fetch path also reads the
 byte-identical pinned copy from unsloth/Qwen3.8-Flash-Next-GGUF (same license).
 
 Quantization and evaluation compute courtesy of Lambda (lambda.ai) —

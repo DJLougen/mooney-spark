@@ -15,9 +15,9 @@
 #      CUDA_ARCH=sm_121  -- or, with --runtime llama.cpp, clone/build our
 #      prism-llama.cpp branch lbf/flashnext-ternary.
 #   3. weights: download manifest.json from the OFFICIAL model repo, then the
-#      4 GGUF shards + BF16 mmproj via huggingface_hub (resumable); every file
+#      4 GGUF shards + mmproj via huggingface_hub (resumable); every file
 #      is size- and sha256-verified against the manifest. Hash mismatch aborts.
-#   4. MTP head (ds4 runtime only): mtp-Qwen3.8-Flash-Next-Q8_0.gguf is fetched
+#   4. MTP head (ds4 runtime only): the mtp-*.gguf file (Q8_0) is fetched
 #      like any other manifest file from the Mooney repo, then cross-checked
 #      against the cuda.fast fixture pin (size+sha256). --mtp-source upstream
 #      falls back to the pinned unsloth source if the manifest does not list it.
@@ -62,14 +62,23 @@ LAUNCH_DIR="${LAUNCH_DIR:-${INSTALL_DIR}/launch}"
 MODEL_REPO="${MODEL_REPO:-DJLougen/Qwen3.8-Flash-Next-Mooney}"
 MODEL_REV="${MODEL_REV:-main}"
 
+# Release file names. The launchers take the shard-1 and mmproj names from
+# the repo's manifest.json when it has been fetched, so a pinned older
+# MODEL_REV keeps working; these defaults are the current release names and
+# are only used with --skip-downloads. The shards are named after the expert
+# quant type (PQ2_0); the mmproj (BF16) and MTP head (Q8_0) carry no quant
+# label in their names, so the Hub's GGUF picker lists only the model itself.
+MODEL_SHARD1_NAME="Qwen3.8-Flash-Next-Mooney-PQ2_0-00001-of-00004.gguf"
+MODEL_MMPROJ_NAME="mmproj-Qwen3.8-Flash-Next-Mooney.gguf"
+
 # MTP draft head (ds4 runtime only). PRIMARY source: the Mooney repo itself --
-# `mtp-Qwen3.8-Flash-Next-Q8_0.gguf` is listed in its manifest.json, so it is
-# downloaded and verified by the same manifest path as the shards.
+# its mtp-*.gguf file is listed in manifest.json, so it is downloaded and
+# verified by the same manifest path as the shards.
 # FALLBACK (`--mtp-source upstream`): the cuda.fast track fixture
 # (fixtures/qwen3_8_125b_a6b_track.json) pins the head to unsloth's public
 # conversion; used only if the Mooney manifest does not (yet) list it.
 # Either way the local copy must match this (size, sha256) pin.
-MTP_LOCAL_NAME="mtp-Qwen3.8-Flash-Next-Q8_0.gguf"
+MTP_LOCAL_NAME="mtp-Qwen3.8-Flash-Next.gguf"
 MTP_SIZE=2786568256
 MTP_SHA256=5ff54097406a905cf3a724c709124ceb0e3e10235ee862298969e91c96fa96e6
 MTP_SOURCE="${MTP_SOURCE:-manifest}"   # manifest | upstream
@@ -569,8 +578,17 @@ fetch_mtp_head() {
 write_launchers() {
     log "== writing launchers under $LAUNCH_DIR =="
     run mkdir -p "$LAUNCH_DIR"
-    local shard1="${MODEL_DIR}/Qwen3.8-Flash-Next-Mooney-00001-of-00004.gguf"
-    local mmproj="${MODEL_DIR}/mmproj-Qwen3.8-Flash-Next-Mooney-BF16.gguf"
+    # Names from the fetched manifest (works for any MODEL_REV), else defaults.
+    local shard1_name="$MODEL_SHARD1_NAME" mmproj_name="$MODEL_MMPROJ_NAME" n
+    if [ -n "${MANIFEST_ROWS:-}" ]; then
+        n="$(printf '%s\n' "$MANIFEST_ROWS" | awk -F '\t' '$1 !~ /^(mmproj|mtp)-/ && $1 ~ /-00001-of-[0-9][0-9][0-9][0-9][0-9]\.gguf$/{print $1; exit}')"
+        [ -n "$n" ] && shard1_name="$n"
+        n="$(printf '%s\n' "$MANIFEST_ROWS" | awk -F '\t' '$1 ~ /^mmproj-.*\.gguf$/{print $1; exit}')"
+        [ -n "$n" ] && mmproj_name="$n"
+    fi
+    log "model files: ${shard1_name} (+ sibling shards), ${mmproj_name}"
+    local shard1="${MODEL_DIR}/${shard1_name}"
+    local mmproj="${MODEL_DIR}/${mmproj_name}"
     local mtp="${MODEL_DIR}/${MTP_LOCAL_NAME}"
 
     if [ "$RUNTIME" = "ds4" ]; then

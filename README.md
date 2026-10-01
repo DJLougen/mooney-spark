@@ -43,10 +43,10 @@ anonymous HF rate limits): `export HF_TOKEN=hf_...` before running setup.
    `-DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=121a-real` and builds
    `llama-server`.
 3. **Downloads** `manifest.json` from the official model repo, then the 4 GGUF
-   shards + BF16 `mmproj` via `huggingface_hub` (resumable). Every file's size
+   shards + the BF16 `mmproj` via `huggingface_hub` (resumable). Every file's size
    and sha256 are checked against the manifest **at run time** — no hashes are
    hardcoded, and a single mismatch aborts the setup.
-4. **Fetches the MTP draft head** (`mtp-Qwen3.8-Flash-Next-Q8_0.gguf`,
+4. **Fetches the MTP draft head** (`mtp-Qwen3.8-Flash-Next.gguf`, Q8_0,
    2.6 GB) — it is a manifest-listed file of the Mooney repo, so it goes
    through the same verified download path, then is cross-checked against the
    cuda.fast fixture pin (size + sha256 `5ff54097…`). If the manifest does not
@@ -82,9 +82,9 @@ Everything installs under `$HOME/mooney-spark/` (override with `INSTALL_DIR`,
 
 ```
 ~/mooney-spark/
-  models/   Qwen3.8-Flash-Next-Mooney-0000{1..4}-of-00004.gguf
-            mmproj-Qwen3.8-Flash-Next-Mooney-BF16.gguf
-            mtp-Qwen3.8-Flash-Next-Q8_0.gguf                  (ds4)
+  models/   Qwen3.8-Flash-Next-Mooney-PQ2_0-0000{1..4}-of-00004.gguf
+            mmproj-Qwen3.8-Flash-Next-Mooney.gguf            (vision, BF16)
+            mtp-Qwen3.8-Flash-Next.gguf                      (MTP head, Q8_0; ds4)
             .manifest/manifest.json
   engine/   cudafast/  or  prism-llama.cpp/
   launch/   serve_ds4.sh  /  serve_llamacpp.sh
@@ -125,7 +125,7 @@ stays ≈49 GiB+ MemAvailable under the tuned memguard floors.
 - **Model weights are NOT in this repo** — they are downloaded from the
   official HF repo at setup time and are under the **Qwen Community
   License 1.0**.
-- The MTP head ships inside the Mooney model repo (`mtp-…-Q8_0.gguf`, a
+- The MTP head ships inside the Mooney model repo (`mtp-Qwen3.8-Flash-Next.gguf`, Q8_0, a
   manifest-listed file, Qwen Community License 1.0). The cuda.fast-pinned
   unsloth source remains a documented fallback (`--mtp-source upstream`).
 ## Credits
