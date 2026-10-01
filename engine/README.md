@@ -40,7 +40,7 @@ Branch `lbf/pq2-rot` of [`DJLougen/cudafast-qwen38-125b-a6b-engine`](https://git
 ## llama.cpp fallback
 
 `--runtime llama.cpp` builds our prism-llama.cpp fork, branch
-`lbf/flashnext-ternary` @ `aba364b32bab16207dfa51f897d860ea3f47fd60`
+`lbf/flashnext-ternary` @ `d02f237354e4198f499b695c506c38315536ffb5`
 (upstream `6c84c7d5` merged into prism `88c4bc60`), as
 `DJLougen/prism-llama.cpp` via `LLAMA_GIT_URL` (or `LLAMA_SRC_DIR` for an
 existing checkout).
