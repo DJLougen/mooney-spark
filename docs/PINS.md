@@ -44,7 +44,7 @@ either source passes the same final pin check.
 
 | engine | base | our branch/tip | delivery |
 |---|---|---|---|
-| ds4 / cuda.fast | `Layr-Labs/cudafast-qwen38-125b-a6b-engine` @ `5707d4f23362a7208483028e6d34519267266729` (vendored `Layr-Labs/ds4` @ `5f36517cf15c6b5b780be69a8f0532545e3b9326`) | `lbf/pq2-rot`, release tip `3e8683358b6be0f515a5a97b229e23b38ac67e6f` on GitHub | standalone public fork `DJLougen/cudafast-qwen38-125b-a6b-engine` cloned by `DS4_GIT_URL` (default); `DS4_SRC_DIR` or vendored `engine/cudafast/` also work |
+| ds4 / cuda.fast | `Layr-Labs/cudafast-qwen38-125b-a6b-engine` @ `5707d4f23362a7208483028e6d34519267266729` (vendored `Layr-Labs/ds4` @ `5f36517cf15c6b5b780be69a8f0532545e3b9326`) | `lbf/pq2-rot`, release tip `6f40fc80222aa0c078712b3bd9a7daf03cb98a0d` on GitHub | standalone public fork `DJLougen/cudafast-qwen38-125b-a6b-engine` cloned by `DS4_GIT_URL` (default); `DS4_SRC_DIR` or vendored `engine/cudafast/` also work |
 | llama.cpp fallback | `ggml-org/llama.cpp` `6c84c7d5` merged into PrismML fork `88c4bc60` | `lbf/flashnext-ternary` @ `aba364b32bab16207dfa51f897d860ea3f47fd60` | `DJLougen/prism-llama.cpp` via `LLAMA_GIT_URL`/`LLAMA_SRC_DIR` |
 
 ## Toolchain (from the cuda.fast fixture)
