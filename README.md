@@ -75,6 +75,15 @@ The ds4 engine ships as a standalone public fork —
 checkout, and a vendored subtree at `engine/cudafast/` is auto-detected.
 The llama.cpp fallback comes from `DJLougen/prism-llama.cpp` (branch
 `lbf/flashnext-ternary`, `LLAMA_GIT_URL`/`LLAMA_SRC_DIR`).
+
+Engine checkouts that `setup_spark.sh` clones itself (under `engine/`) are
+always checked out to the release-pinned SHAs — on first clone and on every
+re-run, so a later push to the branch never silently changes what you build.
+Trees with tracked local edits are refused rather than clobbered (commit or
+stash them, or set `ALLOW_UNPINNED=1` to keep a managed tree wherever it is).
+`DS4_SRC_DIR`/`LLAMA_SRC_DIR` checkouts are never moved; the script warns
+with the exact pin command when they are not at the pin.
+
 ## Where the weights go
 
 Everything installs under `$HOME/mooney-spark/` (override with `INSTALL_DIR`,

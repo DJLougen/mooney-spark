@@ -28,6 +28,11 @@
 # Fail-closed: any failed check or hash aborts before launchers are written.
 # Idempotent: verified files are re-hashed on rerun and skipped for download;
 # build steps are make/ninja incremental.
+# Engine pinning: trees setup clones itself (under $INSTALL_DIR/engine/) are
+# always moved to the pinned SHAs below -- on clone AND on re-run after a pin
+# bump -- unless the tree has tracked edits (setup aborts instead) or
+# ALLOW_UNPINNED=1 is set. Your own DS4_SRC_DIR / LLAMA_SRC_DIR checkouts are
+# never moved; a warning tells you how to pin them yourself.
 # =============================================================================
 
 set -euo pipefail
@@ -112,6 +117,8 @@ VERIFY_MANIFEST="${VERIFY_MANIFEST:-}"
 SKIP_BUILD="${SKIP_BUILD:-0}"
 SKIP_DOWNLOADS="${SKIP_DOWNLOADS:-0}"
 SKIP_PREFLIGHT="${SKIP_PREFLIGHT:-0}"
+ALLOW_UNPINNED="${ALLOW_UNPINNED:-0}"   # 1 = leave managed clones wherever they are (no checkout to pin)
+PIN_MOVED=""          # managed trees checked out to their pin this run (drives helper rebuild)
 declare -a EXPECT=()
 
 # ---------------------------------------------------------------------------
@@ -321,14 +328,80 @@ preflight() {
 # ---------------------------------------------------------------------------
 # 2. Engine build
 # ---------------------------------------------------------------------------
+# --- pinning + build stamps -------------------------------------------------
+# stamp_key_for DIR: identity string recorded in .mooney-build-stamp -- the
+# git HEAD sha for a checkout, "nogit" for vendored/user trees without .git.
+stamp_key_for() {
+    git -C "$1" rev-parse HEAD 2>/dev/null || printf 'nogit\n'
+}
+
+# update_build_stamp DIR KEY VALUE: after a successful build, record what the
+# tree was built from (git HEAD + e.g. CUDA_ARCH=sm_121). Returns 0 when the
+# stamp changed or was missing, 1 when it already matched (callers can gate
+# downstream rebuilds on the difference).
+update_build_stamp() {
+    local stamp="$1/.mooney-build-stamp" key="$2" want
+    want="$(printf 'HEAD=%s\n%s\n' "$key" "$3")"
+    if [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$want" ]; then
+        return 1
+    fi
+    if [ "$DRY_RUN" = "1" ]; then
+        printf 'setup_spark: [dry-run] write %s (HEAD=%s, %s)\n' "$stamp" "$key" "$3"
+    else
+        printf '%s\n' "$want" > "$stamp"
+    fi
+    return 0
+}
+
+# pin_managed_checkout DIR PIN -- setup-owned clones always sit on the pin:
+# after clone AND on re-run, if HEAD != pin we fetch (branch + pin sha) and
+# checkout --detach. A tree with tracked modifications is refused rather than
+# clobbered; ALLOW_UNPINNED=1 skips the checkout entirely.
+pin_managed_checkout() {
+    local dir="$1" pin="$2" head
+    if ! git -C "$dir" rev-parse --git-dir >/dev/null 2>&1; then
+        if [ "$DRY_RUN" = "1" ]; then
+            printf 'setup_spark: [dry-run] after clone: git -C %s fetch --tags origin && git -C %s checkout --detach %s\n' \
+                "$dir" "$dir" "$pin"
+        fi
+        return 0
+    fi
+    head="$(git -C "$dir" rev-parse HEAD 2>/dev/null || true)"
+    if [ "$head" = "$pin" ]; then
+        log "pinned HEAD: $pin"
+        return 0
+    fi
+    if [ "$ALLOW_UNPINNED" = "1" ]; then
+        warn "ALLOW_UNPINNED=1: leaving $dir at ${head:-unknown} (pin is $pin)"
+        return 0
+    fi
+    if [ -n "$head" ] && ! git -C "$dir" diff --quiet HEAD --; then
+        die "$dir has tracked modifications -- refusing to move it to the pin.
+  Commit/stash your changes, clean the tree, or re-run with ALLOW_UNPINNED=1 to keep it."
+    fi
+    log "moving $dir to pinned ${pin} (was ${head:-unknown})"
+    if [ "$DRY_RUN" = "1" ]; then
+        printf 'setup_spark: [dry-run] git -C %s fetch --tags origin\n' "$dir"
+        printf 'setup_spark: [dry-run] git -C %s fetch origin %s   # if the pin is not on the branch\n' "$dir" "$pin"
+        printf 'setup_spark: [dry-run] git -C %s checkout --detach %s\n' "$dir" "$pin"
+        return 0
+    fi
+    run git -C "$dir" fetch --tags origin
+    git -C "$dir" cat-file -e "$pin" 2>/dev/null || run git -C "$dir" fetch origin "$pin"
+    run git -C "$dir" checkout --detach "$pin"
+    head="$(git -C "$dir" rev-parse HEAD)"
+    [ "$head" = "$pin" ] || die "checkout did not land on pin $pin (HEAD=$head)"
+    PIN_MOVED="${PIN_MOVED} $dir"
+    log "pinned HEAD: $head"
+}
 build_ds4() {
-    log "== engine: ds4 (cuda.fast port, branch ${DS4_BRANCH}) =="
-    local src="$DS4_SRC_DIR"
+    log "== engine: ds4 (cuda.fast port, branch ${DS4_BRANCH}, pin ${DS4_PIN_SHA}) =="
+    local src="$DS4_SRC_DIR" managed=0
     if [ -z "$src" ] && [ -d "${SCRIPT_DIR}/engine/cudafast/ds4" ]; then
-        src="${SCRIPT_DIR}/engine/cudafast"   # vendored subtree of this repo
+        src="${SCRIPT_DIR}/engine/cudafast"   # vendored subtree of this repo (not moved)
     fi
     if [ -z "$src" ]; then
-        src="${ENGINE_DIR}/cudafast"
+        src="${ENGINE_DIR}/cudafast"; managed=1
         if [ -n "$DS4_GIT_URL" ]; then
             if [ -d "$src/.git" ] || git -C "$src" rev-parse --git-dir >/dev/null 2>&1; then
                 log "engine tree present: $src"
@@ -344,11 +417,16 @@ build_ds4() {
         fi
     fi
     log "ds4 source: $src"
-    if [ "$DRY_RUN" != "1" ] && git -C "$src" rev-parse --git-dir >/dev/null 2>&1; then
+    if [ "$managed" = "1" ]; then
+        pin_managed_checkout "$src" "$DS4_PIN_SHA"
+    elif git -C "$src" rev-parse --git-dir >/dev/null 2>&1; then
+        # user-supplied or vendored checkout: never moved, just compared
         local head
         head="$(git -C "$src" rev-parse HEAD 2>/dev/null || true)"
         log "ds4 HEAD: ${head:-unknown} (pin: $DS4_PIN_SHA)"
-        [ -n "$head" ] && [ "$head" = "$DS4_PIN_SHA" ] || warn "ds4 HEAD does not equal pinned tip $DS4_PIN_SHA"
+        [ -n "$head" ] && [ "$head" = "$DS4_PIN_SHA" ] || \
+            warn "ds4 HEAD ${head:-unknown} != pinned $DS4_PIN_SHA -- building an unpinned tree.
+  This tree is yours; to use the release pin: git -C '$src' fetch origin $DS4_PIN_SHA && git -C '$src' checkout --detach $DS4_PIN_SHA"
     fi
     if [ ! -f "$src/ds4/Makefile" ]; then
         if [ "$DRY_RUN" = "1" ]; then warn "no $src/ds4/Makefile yet (dry-run)"; else
@@ -359,15 +437,20 @@ build_ds4() {
     DS4_SERVER_BIN="$src/ds4/ds4-server"
     if [ "$SKIP_BUILD" = "1" ]; then log "SKIP_BUILD=1: not building"; return 0; fi
     # CUDA_ARCH=sm_121 is MANDATORY: upstream's default arch emits ptxas-fatal
-    # m16n8k32 PTX on GB10. `make cuda-spark` already defaults to sm_121; we
-    # pass it explicitly anyway.
-    log "building ds4 (CUDA_ARCH=sm_121, under memguard)"
+    # m16n8k32 PTX on GB10. `make cuda-spark` runs `make -B` internally, so
+    # every build is already a full rebuild and no separate `make clean` is
+    # needed; .mooney-build-stamp instead records what we built and drives the
+    # vision-helper rebuild below. (ds4's Makefile has hand-maintained header
+    # deps -- no auto-generated .d files -- which is another reason not to
+    # trust plain incremental `make` here.)
+    log "building ds4 (CUDA_ARCH=sm_121, under memguard; cuda-spark -B = full rebuild)"
     if [ "$DRY_RUN" = "1" ]; then
         printf 'setup_spark: [dry-run] %s --min-start-gib 20 --soft-gib 12 --hard-gib 8 -- make -C %s/ds4 cuda-spark CUDA_ARCH=sm_121 -j8\n' "$MEMGUARD" "$src"
     else
         "$MEMGUARD" --min-start-gib 20 --soft-gib 12 --hard-gib 8 --interval-seconds 2 \
             -- make -C "$src/ds4" cuda-spark CUDA_ARCH=sm_121 -j8
     fi
+    update_build_stamp "$src" "$(stamp_key_for "$src")" "CUDA_ARCH=sm_121" || true
     log "ds4-server binary: $DS4_SERVER_BIN"
     build_ds4_vision_helper "$src"
 }
@@ -381,25 +464,73 @@ build_ds4_vision_helper() {
     local dsrc="$1"
     local helper="$dsrc/ds4/tools/qwen4exp-vision-encode"
     local hsrc="$dsrc/ds4/tools/qwen4exp-vision-encode.cpp"
-    if [ -x "$helper" ]; then log "vision helper present: $helper"; return 0; fi
+    local vstamp="$dsrc/ds4/tools/.qwen4exp-vision-encode.stamp"
+    local lsrc="${LLAMA_SRC_DIR:-${ENGINE_DIR}/prism-llama.cpp}"
+    local lmanaged=0
+    [ -z "$LLAMA_SRC_DIR" ] && lmanaged=1
+    # Rebuild inputs: helper binary missing, its .cpp newer, the ds4 build
+    # stamp moved (managed trees only -- where we wrote it), or the
+    # prism-llama.cpp HEAD/stamp moved.
+    local ds4k llamak ds4s="" llamas="" want_sig t
+    ds4k="$(stamp_key_for "$dsrc")"
+    if [ "$lmanaged" = "1" ] && [ "$ALLOW_UNPINNED" != "1" ]; then
+        llamak="$LLAMA_PIN_SHA"   # managed tree is (or will be) at the pin
+    else
+        llamak="$(stamp_key_for "$lsrc")"
+    fi
+    [ -f "$dsrc/.mooney-build-stamp" ] && ds4s="$(cat "$dsrc/.mooney-build-stamp")"
+    [ -f "$lsrc/.mooney-build-stamp" ] && llamas="$(cat "$lsrc/.mooney-build-stamp")"
+    want_sig="$(printf 'ds4=%s llama=%s ds4stamp=%s llamastamp=%s' "$ds4k" "$llamak" "$ds4s" "$llamas")"
+    if [ -x "$helper" ]; then
+        local moved=0 m
+        for m in $PIN_MOVED; do
+            case "$m" in "$dsrc"|"$lsrc") moved=1 ;; esac
+        done
+        if [ "$moved" = "0" ] && [ ! "$hsrc" -nt "$helper" ] && [ -f "$vstamp" ] && \
+           [ "$(cat "$vstamp")" = "$want_sig" ]; then
+            log "vision helper up to date: $helper"
+            return 0
+        fi
+        log "vision helper rebuild needed (newer .cpp, pinned tree moved, or engine/lib sources changed)"
+    fi
     if [ ! -f "$hsrc" ]; then
         warn "no $hsrc -- ds4 tree predates vision support; --vision will be omitted"
         return 0
     fi
     log "== vision helper (qwen4exp-vision-encode, links prism-llama.cpp mtmd) =="
-    local lsrc="${LLAMA_SRC_DIR:-${ENGINE_DIR}/prism-llama.cpp}"
     if [ ! -d "$lsrc/tools/mtmd" ]; then
         if git -C "$lsrc" rev-parse --git-dir >/dev/null 2>&1; then
             log "prism-llama.cpp checkout present but mtmd missing -- wrong branch? (want ${LLAMA_BRANCH})"
-        elif [ -n "$LLAMA_GIT_URL" ]; then
+        elif [ "$lmanaged" = "1" ] && [ -n "$LLAMA_GIT_URL" ]; then
             run git clone --branch "$LLAMA_BRANCH" "$LLAMA_GIT_URL" "$lsrc"
         else
             warn "no prism-llama.cpp source for the vision helper (set LLAMA_SRC_DIR or LLAMA_GIT_URL); --vision omitted"
             return 0
         fi
     fi
+    if [ "$lmanaged" = "1" ]; then
+        pin_managed_checkout "$lsrc" "$LLAMA_PIN_SHA"
+    elif git -C "$lsrc" rev-parse --git-dir >/dev/null 2>&1; then
+        # user-supplied checkout: never moved, just compared
+        local lhead
+        lhead="$(git -C "$lsrc" rev-parse HEAD 2>/dev/null || true)"
+        [ -n "$lhead" ] && [ "$lhead" = "$LLAMA_PIN_SHA" ] || \
+            warn "prism-llama.cpp HEAD ${lhead:-unknown} != pinned $LLAMA_PIN_SHA -- helper built against an unpinned tree.
+  This tree is yours; to use the release pin: git -C '$lsrc' fetch origin $LLAMA_PIN_SHA && git -C '$lsrc' checkout --detach $LLAMA_PIN_SHA"
+    fi
     [ -d "$lsrc/tools/mtmd" ] || { warn "mtmd sources not found in $lsrc; --vision omitted"; return 0; }
+    # (re)build libmtmd/libllama when the libs are missing, or when a managed
+    # tree moved since the stamp was written (ninja tracks source deps itself).
+    local need_libs=0
     if [ ! -f "$lsrc/build/bin/libmtmd.so" ] && [ ! -f "$lsrc/build/bin/libmtmd.dylib" ]; then
+        need_libs=1
+    elif [ "$lmanaged" = "1" ] && [ -f "$lsrc/.mooney-build-stamp" ] && \
+         ! grep -qxF "HEAD=$llamak" "$lsrc/.mooney-build-stamp"; then
+        need_libs=1
+    elif [ "$lmanaged" = "1" ] && [ ! -f "$lsrc/.mooney-build-stamp" ]; then
+        need_libs=1   # managed tree, never stamped by us -- build to be safe
+    fi
+    if [ "$need_libs" = "1" ]; then
         for t in cmake ninja g++; do
             have "$t" || { warn "missing $t -- cannot build vision helper; --vision omitted"; return 0; }
         done
@@ -411,10 +542,21 @@ build_ds4_vision_helper() {
             "$MEMGUARD" --min-start-gib 12 --soft-gib 8 --hard-gib 4 --interval-seconds 2 \
                 -- nice -n 10 ninja -C "$lsrc/build" -j12 mtmd llama
         fi
+        [ "$lmanaged" = "1" ] && { update_build_stamp "$lsrc" "$(stamp_key_for "$lsrc")" "CMAKE_CUDA_ARCHITECTURES=121a-real" || true; }
+    else
+        log "mtmd/llama libs present and stamped for this HEAD: $lsrc"
     fi
+    # Re-derive the signature from the stamps as they now are on disk, so the
+    # recorded helper stamp matches what the next run will compute.
+    ds4s=""; llamas=""
+    [ -f "$dsrc/.mooney-build-stamp" ] && ds4s="$(cat "$dsrc/.mooney-build-stamp")"
+    [ -f "$lsrc/.mooney-build-stamp" ] && llamas="$(cat "$lsrc/.mooney-build-stamp")"
+    want_sig="$(printf 'ds4=%s llama=%s ds4stamp=%s llamastamp=%s' "$ds4k" "$llamak" "$ds4s" "$llamas")"
+    have g++ || { warn "missing g++ -- cannot build vision helper; --vision omitted"; return 0; }
     log "compiling vision helper against $lsrc"
     if [ "$DRY_RUN" = "1" ]; then
         printf 'setup_spark: [dry-run] g++ ... %s -lmtmd -lllama -> %s\n' "$hsrc" "$helper"
+        printf 'setup_spark: [dry-run] write %s (%s)\n' "$vstamp" "$want_sig"
         return 0
     fi
     if ! g++ -O2 -std=c++17 -I "$lsrc/tools/mtmd" -I "$lsrc/vendor" -I "$lsrc/include" \
@@ -424,14 +566,15 @@ build_ds4_vision_helper() {
         warn "vision helper build failed; --vision omitted from the launcher (text still works)"
         return 0
     fi
+    printf '%s\n' "$want_sig" > "$vstamp"
     log "vision helper: $helper"
 }
 
 build_llamacpp() {
-    log "== engine: llama.cpp fork (prism-llama.cpp, branch ${LLAMA_BRANCH}) =="
-    local src="$LLAMA_SRC_DIR"
+    log "== engine: llama.cpp fork (prism-llama.cpp, branch ${LLAMA_BRANCH}, pin ${LLAMA_PIN_SHA}) =="
+    local src="$LLAMA_SRC_DIR" managed=0
     if [ -z "$src" ]; then
-        src="${ENGINE_DIR}/prism-llama.cpp"
+        src="${ENGINE_DIR}/prism-llama.cpp"; managed=1
         if [ -d "$src/.git" ] || git -C "$src" rev-parse --git-dir >/dev/null 2>&1; then
             log "engine tree present: $src"
         elif [ -n "$LLAMA_GIT_URL" ]; then
@@ -445,15 +588,21 @@ build_llamacpp() {
         fi
     fi
     log "llama.cpp source: $src"
-    if [ "$DRY_RUN" != "1" ] && git -C "$src" rev-parse --git-dir >/dev/null 2>&1; then
+    if [ "$managed" = "1" ]; then
+        pin_managed_checkout "$src" "$LLAMA_PIN_SHA"
+    elif git -C "$src" rev-parse --git-dir >/dev/null 2>&1; then
+        # user-supplied checkout: never moved, just compared
         local head
         head="$(git -C "$src" rev-parse HEAD 2>/dev/null || true)"
         log "llama.cpp HEAD: ${head:-unknown} (pin: $LLAMA_PIN_SHA)"
-        [ -n "$head" ] && [ "$head" = "$LLAMA_PIN_SHA" ] || warn "llama.cpp HEAD does not equal pinned tip $LLAMA_PIN_SHA"
+        [ -n "$head" ] && [ "$head" = "$LLAMA_PIN_SHA" ] || \
+            warn "llama.cpp HEAD ${head:-unknown} != pinned $LLAMA_PIN_SHA -- building an unpinned tree.
+  This tree is yours; to use the release pin: git -C '$src' fetch origin $LLAMA_PIN_SHA && git -C '$src' checkout --detach $LLAMA_PIN_SHA"
     fi
     LLAMA_SERVER_BIN="$src/build/bin/llama-server"
     if [ "$SKIP_BUILD" = "1" ]; then log "SKIP_BUILD=1: not building"; return 0; fi
-    # Exact configure from the port handoff; sm_121a-real on GB10.
+    # Exact configure from the port handoff; sm_121a-real on GB10. Ninja tracks
+    # header deps itself, so incremental rebuilds are safe here.
     log "configuring (GGML_CUDA, CMAKE_CUDA_ARCHITECTURES=121a-real)"
     run cmake -S "$src" -B "$src/build" -G Ninja -DCMAKE_BUILD_TYPE=Release \
         -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=121a-real -DLLAMA_BUILD_TESTS=OFF
@@ -463,6 +612,7 @@ build_llamacpp() {
         "$MEMGUARD" --min-start-gib 20 --soft-gib 12 --hard-gib 8 --interval-seconds 2 \
             -- nice -n 10 ninja -C "$src/build" -j12 llama-server llama-cli
     fi
+    [ "$managed" = "1" ] && { update_build_stamp "$src" "$(stamp_key_for "$src")" "CMAKE_CUDA_ARCHITECTURES=121a-real" || true; }
     log "llama-server binary: $LLAMA_SERVER_BIN"
 }
 
@@ -703,7 +853,7 @@ verify_only() {
 # ---------------------------------------------------------------------------
 # arg parsing + main
 # ---------------------------------------------------------------------------
-usage() { sed -n '2,38p' "$0"; }
+usage() { sed -n '2,/^$/p' "$0"; }
 
 while [ $# -gt 0 ]; do
     case "$1" in
