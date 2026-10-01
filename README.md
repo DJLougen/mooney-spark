@@ -96,17 +96,22 @@ Everything installs under `$HOME/mooney-spark/` (override with `INSTALL_DIR`,
 |---|---|---|---|
 | Decode, short ctx | **45.8 tok/s** | 33.3 tok/s | 27.8 tok/s |
 | Decode, 4k ctx | **47.7 tok/s** | 30.6 tok/s | 25.8 tok/s |
-| Decode, 30–32k ctx | fix in flight | fix in flight | 17.6 tok/s (30k) |
-| Decode, 256k ctx | PENDING | PENDING | — |
-| Model resident | ≈39 GiB (MemAvailable delta incl. KV/context) | ≈39 GiB | 38.6 GiB MemAvailable drop |
+| Decode, 32k ctx | ≈41.5 tok/s* | 28.3 tok/s* | 17.6 tok/s (30k) |
+| Decode, 64k ctx | 40.8–44.5 tok/s | 27.9 tok/s | — |
+| Decode, 128k ctx | 32.3–36.8 tok/s | 27.1 tok/s | — |
+| Decode, 256k ctx | 32.6 tok/s† | 25.0 tok/s† | — |
+| Resident @ ctx | 57.1 GiB @ 256k | 42.1 GiB @ 32k · 55.4 GiB @ 256k | ≈39 GiB @ 32k |
 
 ds4: medians of 3 runs on non-repetitive prompts, greedy, MTP draft depth 1
-(output matches MTP-off). On the same engine and Spark, Unsloth's UD-Q4_K_XL
-build runs 23.3 tok/s serial / 32.9 tok/s with MTP — Mooney is 1.39×/1.43×
-faster at short context. llama.cpp numbers are the model card's measured
-values. A long-prompt bug above ≈27k tokens is being fixed; **PENDING**
-marks the 256k numbers still being measured — the script does not gate on
-either.
+(output sha-identical to MTP-off at every measured depth). On the same engine
+and Spark, Unsloth's UD-Q4_K_XL build runs 23.3 tok/s serial / 32.9 tok/s with
+MTP — Mooney is 1.39×/1.43× faster at short context. Fast-engine prefill
+≈1,045 tok/s (32k) → ≈926 tok/s (256k). llama.cpp numbers are the model
+card's measured values.
+\* 32k decode measured over a 75-token generation (early stop).
+† 256k decode measured over a 21-token generation — indicative, not
+steady-state. The ds4 launcher defaults to `-c 262144`; a full-length request
+stays ≈49 GiB+ MemAvailable under the tuned memguard floors.
 
 ## Licensing
 
