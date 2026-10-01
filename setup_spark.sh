@@ -341,11 +341,62 @@ build_ds4() {
     log "building ds4 (CUDA_ARCH=sm_121, under memguard)"
     if [ "$DRY_RUN" = "1" ]; then
         printf 'setup_spark: [dry-run] %s --min-start-gib 20 --soft-gib 12 --hard-gib 8 -- make -C %s/ds4 cuda-spark CUDA_ARCH=sm_121 -j8\n' "$MEMGUARD" "$src"
-    else
         "$MEMGUARD" --min-start-gib 20 --soft-gib 12 --hard-gib 8 --interval-seconds 2 \
             -- make -C "$src/ds4" cuda-spark CUDA_ARCH=sm_121 -j8
     fi
     log "ds4-server binary: $DS4_SERVER_BIN"
+    build_ds4_vision_helper "$src"
+}
+
+# The ds4 vision path execs a small helper (mtmd/clip encoder, CPU) that lives
+# in the ds4 tree at ds4/tools/qwen4exp-vision-encode and links prism-llama.cpp's
+# libmtmd/libllama. Reuse an existing prism-llama.cpp checkout/build when
+# possible (LLAMA_SRC_DIR or a previous --runtime llama.cpp build); otherwise
+# clone and build just the mtmd+llama targets.
+build_ds4_vision_helper() {
+    local dsrc="$1"
+    local helper="$dsrc/ds4/tools/qwen4exp-vision-encode"
+    local hsrc="$dsrc/ds4/tools/qwen4exp-vision-encode.cpp"
+    if [ -x "$helper" ]; then log "vision helper present: $helper"; return 0; fi
+    if [ ! -f "$hsrc" ]; then
+        warn "no $hsrc -- ds4 tree predates vision support; --vision will be omitted"
+        return 0
+    fi
+    log "== vision helper (qwen4exp-vision-encode, links prism-llama.cpp mtmd) =="
+    local lsrc="${LLAMA_SRC_DIR:-${ENGINE_DIR}/prism-llama.cpp}"
+    if [ ! -d "$lsrc/tools/mtmd" ]; then
+        if git -C "$lsrc" rev-parse --git-dir >/dev/null 2>&1; then
+            log "prism-llama.cpp checkout present but mtmd missing -- wrong branch? (want ${LLAMA_BRANCH})"
+        elif [ -n "$LLAMA_GIT_URL" ]; then
+            run git clone --branch "$LLAMA_BRANCH" "$LLAMA_GIT_URL" "$lsrc"
+        else
+            warn "no prism-llama.cpp source for the vision helper (set LLAMA_SRC_DIR or LLAMA_GIT_URL); --vision omitted"
+            return 0
+        fi
+    fi
+    [ -d "$lsrc/tools/mtmd" ] || { warn "mtmd sources not found in $lsrc; --vision omitted"; return 0; }
+    if [ ! -f "$lsrc/build/bin/libmtmd.so" ] && [ ! -f "$lsrc/build/bin/libmtmd.dylib" ]; then
+        for t in cmake ninja g++; do
+            have "$t" || { warn "missing $t -- cannot build vision helper; --vision omitted"; return 0; }
+        done
+        run cmake -S "$lsrc" -B "$lsrc/build" -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=121a-real -DLLAMA_BUILD_TESTS=OFF
+        "$MEMGUARD" --min-start-gib 12 --soft-gib 8 --hard-gib 4 --interval-seconds 2 \
+            -- nice -n 10 ninja -C "$lsrc/build" -j12 mtmd llama
+    fi
+    log "compiling vision helper against $lsrc"
+    if [ "$DRY_RUN" = "1" ]; then
+        printf 'setup_spark: [dry-run] g++ ... %s -lmtmd -lllama -> %s\n' "$hsrc" "$helper"
+        return 0
+    fi
+    if ! g++ -O2 -std=c++17 -I "$lsrc/tools/mtmd" -I "$lsrc/vendor" -I "$lsrc/include" \
+            -I "$lsrc/ggml/include" "$hsrc" \
+            -L "$lsrc/build/bin" -lmtmd -lllama -lggml -lggml-base -lggml-cpu \
+            -Wl,-rpath,"$lsrc/build/bin" -o "$helper"; then
+        warn "vision helper build failed; --vision omitted from the launcher (text still works)"
+        return 0
+    fi
+    log "vision helper: $helper"
 }
 
 build_llamacpp() {
@@ -505,6 +556,10 @@ write_launchers() {
 
     if [ "$RUNTIME" = "ds4" ]; then
         local out="${LAUNCH_DIR}/serve_ds4.sh"
+        DS4_VISION_LINE=""
+        if [ -x "${DS4_SERVER_BIN%/*}/tools/qwen4exp-vision-encode" ]; then
+            DS4_VISION_LINE="$(printf '    --vision "%s" \\\\n' "${mmproj}")"
+        fi
         if [ "$DRY_RUN" = "1" ]; then
             printf 'setup_spark: [dry-run] write %s: ds4-server -m shard1 --mtp-model mtp --mtp-draft 2 --cuda --ctx 262144 --host 127.0.0.1 --port 8000, under memguard (min-start 75 / soft 20 / hard 10 GiB)\n' "$out"
         else
@@ -514,7 +569,8 @@ write_launchers() {
 # /v1/chat/completions, /v1/responses, /v1/completions, /v1/messages on
 # 127.0.0.1:\${DS4_PORT:-8000}. MTP speculative decoding ON at depth 1
 # (--mtp-draft 2; measured 45.8 tok/s short ctx / 47.7 at 4k vs 33.3/30.6
-# serial, greedy output matches MTP-off -- see README/model card).
+# serial, greedy output matches MTP-off -- see README/model card). Image
+# requests work when the vision helper was built at setup time.
 set -euo pipefail
 exec "${MEMGUARD}" \\
     --min-start-gib "\${MG_MIN_START_GIB:-75}" \\
@@ -523,7 +579,7 @@ exec "${MEMGUARD}" \\
     -- \\
 "${DS4_SERVER_BIN:-${ENGINE_DIR}/cudafast/ds4/ds4-server}" \\
     -m "${shard1}" \\
-    --mtp-model "${mtp}" \\
+${DS4_VISION_LINE}    --mtp-model "${mtp}" \\
     --mtp-draft "\${DS4_MTP_DRAFT:-2}" \\
     --cuda --ctx "\${DS4_CTX:-262144}" \\
     --host "\${DS4_HOST:-127.0.0.1}" --port "\${DS4_PORT:-8000}"
