@@ -103,7 +103,7 @@ VERIFY_MANIFEST="${VERIFY_MANIFEST:-}"
 SKIP_BUILD="${SKIP_BUILD:-0}"
 SKIP_DOWNLOADS="${SKIP_DOWNLOADS:-0}"
 SKIP_PREFLIGHT="${SKIP_PREFLIGHT:-0}"
-declare -a EXPECT 2>/dev/null || EXPECT=()
+declare -a EXPECT=()
 
 # ---------------------------------------------------------------------------
 # Small utils
