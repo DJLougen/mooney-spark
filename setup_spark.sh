@@ -556,9 +556,11 @@ write_launchers() {
 
     if [ "$RUNTIME" = "ds4" ]; then
         local out="${LAUNCH_DIR}/serve_ds4.sh"
-        DS4_VISION_LINE=""
-        if [ -x "${DS4_SERVER_BIN%/*}/tools/qwen4exp-vision-encode" ]; then
-            DS4_VISION_LINE="$(printf '    --vision "%s" \\\n' "${mmproj}")"
+        # --vision is always written: ds4-server resolves the mmproj at load
+        # and execs tools/qwen4exp-vision-encode per image request; if the
+        # helper wasn't built, image requests error but text is unaffected.
+        if [ ! -x "${DS4_SERVER_BIN%/*}/tools/qwen4exp-vision-encode" ]; then
+            warn "vision helper missing -- --vision is set anyway; image requests will error until it is built"
         fi
         if [ "$DRY_RUN" = "1" ]; then
             printf 'setup_spark: [dry-run] write %s: ds4-server -m shard1 --mtp-model mtp --mtp-draft 2 --cuda --ctx 262144 --host 127.0.0.1 --port 8000, under memguard (min-start 75 / soft 20 / hard 10 GiB)\n' "$out"
@@ -579,7 +581,8 @@ exec "${MEMGUARD}" \\
     -- \\
 "${DS4_SERVER_BIN:-${ENGINE_DIR}/cudafast/ds4/ds4-server}" \\
     -m "${shard1}" \\
-${DS4_VISION_LINE}    --mtp-model "${mtp}" \\
+    --vision "${mmproj}" \\
+    --mtp-model "${mtp}" \\
     --mtp-draft "\${DS4_MTP_DRAFT:-2}" \\
     --cuda --ctx "\${DS4_CTX:-262144}" \\
     --host "\${DS4_HOST:-127.0.0.1}" --port "\${DS4_PORT:-8000}"
