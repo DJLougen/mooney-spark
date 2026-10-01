@@ -558,7 +558,7 @@ write_launchers() {
         local out="${LAUNCH_DIR}/serve_ds4.sh"
         DS4_VISION_LINE=""
         if [ -x "${DS4_SERVER_BIN%/*}/tools/qwen4exp-vision-encode" ]; then
-            DS4_VISION_LINE="$(printf '    --vision "%s" \\\\n' "${mmproj}")"
+            DS4_VISION_LINE="$(printf '    --vision "%s" \\\n' "${mmproj}")"
         fi
         if [ "$DRY_RUN" = "1" ]; then
             printf 'setup_spark: [dry-run] write %s: ds4-server -m shard1 --mtp-model mtp --mtp-draft 2 --cuda --ctx 262144 --host 127.0.0.1 --port 8000, under memguard (min-start 75 / soft 20 / hard 10 GiB)\n' "$out"
