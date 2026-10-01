@@ -1,0 +1,28 @@
+NOTICE — mooney-spark
+
+This repository packages runtimes and setup tooling for running the
+Qwen3.8-Flash-Next-Mooney GGUF build on one NVIDIA DGX Spark.
+
+This product includes or derives from software developed by:
+
+  * Layr Labs, Inc. — the cuda.fast Qwen 3.8 125B A6B CUDA engine
+    (github.com/Layr-Labs/cudafast-qwen38-125b-a6b-engine, MIT), itself a port
+    of Layr-Labs/ds4, which descends from antirez/ds4
+    (github.com/antirez/ds4, MIT). Copyright (c) 2026 Layr Labs, Inc.;
+    Copyright (c) 2026 The ds4.c authors; Copyright (c) 2023-2026 The ggml
+    authors.
+
+  * PrismML — the llama.cpp fork ("prism") whose PQ2_0/PTQ1_0 quant types,
+    hadamard runtime and dflash/dfly/dspark extensions this work builds on
+    (MIT), and the Bonsai quantization line behind Mooney's expert recipe.
+
+  * ggml-org — llama.cpp (github.com/ggml-org/llama.cpp, MIT).
+
+Model weights are NOT distributed in this repository. They are downloaded at
+setup time from the official repository DJLougen/Qwen3.8-Flash-Next-Mooney and
+remain under the Qwen Community License 1.0 (derived work of
+Qwen/Qwen3.8-Flash-Next). The MTP draft head ships in that same repo as
+mtp-Qwen3.8-Flash-Next-Q8_0.gguf; a fallback fetch path also reads the
+byte-identical pinned copy from unsloth/Qwen3.8-Flash-Next-GGUF (same license).
+
+Quantization compute courtesy of Lambda (lambda.ai).

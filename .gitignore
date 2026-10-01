@@ -1,0 +1,10 @@
+# weights and downloads are never committed
+*.gguf
+.partial/
+.manifest/
+# engine sources are vendored via subtree or cloned to INSTALL_DIR, not here
+engine/cudafast/
+engine/prism-llama.cpp/
+# build outputs
+*.o
+build/
