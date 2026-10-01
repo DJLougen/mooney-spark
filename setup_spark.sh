@@ -97,12 +97,12 @@ MIN_DISK_GIB="${MIN_DISK_GIB:-110}"
 MIN_START_MEM_GIB="${MIN_START_MEM_GIB:-8}"   # setup-time floor; launch guard is stricter
 DRIVER_MIN="580.159.03"
 
-DRY_RUN=0
-VERIFY_ONLY=""
-VERIFY_MANIFEST=""
-SKIP_BUILD=0
-SKIP_DOWNLOADS=0
-SKIP_PREFLIGHT=0
+DRY_RUN="${DRY_RUN:-0}"
+VERIFY_ONLY="${VERIFY_ONLY:-}"
+VERIFY_MANIFEST="${VERIFY_MANIFEST:-}"
+SKIP_BUILD="${SKIP_BUILD:-0}"
+SKIP_DOWNLOADS="${SKIP_DOWNLOADS:-0}"
+SKIP_PREFLIGHT="${SKIP_PREFLIGHT:-0}"
 declare -a EXPECT 2>/dev/null || EXPECT=()
 
 # ---------------------------------------------------------------------------
