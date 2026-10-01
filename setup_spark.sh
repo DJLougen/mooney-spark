@@ -163,7 +163,7 @@ hf_get() {
             "$repo" "$rev" "$rpath" "$dest"
         return 0
     fi
-    HF_REPO="$repo" HF_REV="$rev" HF_RPATH="$rpath" HF_STAGE="$stage_dir" \
+    if HF_REPO="$repo" HF_REV="$rev" HF_RPATH="$rpath" HF_STAGE="$stage_dir" \
     python3 - <<'PYEOF'
 import os, sys
 try:
@@ -179,10 +179,24 @@ p = hf_hub_download(
 )
 print(p)
 PYEOF
-    # local_dir preserves the repo-relative path layout; move it flat into place.
-    local staged="${stage_dir}/${rpath}"
-    [ -f "$staged" ] || die "download reported success but $staged is absent"
-    run mv -f "$staged" "$dest"
+    then
+        # local_dir preserves the repo-relative path layout; move it flat into place.
+        local staged="${stage_dir}/${rpath}"
+        [ -f "$staged" ] || die "download reported success but $staged is absent"
+        run mv -f "$staged" "$dest"
+        return 0
+    fi
+    # Fallback: plain curl to the resolve URL. Covers broken huggingface_hub
+    # installs (e.g. httpx2/decoder version skew) and keeps auth simple.
+    warn "hf_hub_download failed for ${repo}/${rpath} -- falling back to curl"
+    have curl || die "curl not found and hf_hub_download failed"
+    local curl_auth=()
+    [ -n "${HF_TOKEN:-}" ] && curl_auth=(-H "Authorization: Bearer ${HF_TOKEN}")
+    run curl -fL --retry 5 --retry-delay 5 -C - -H "Accept-Encoding: identity" \
+        "${curl_auth[@]}" \
+        -o "$dest" \
+        "https://huggingface.co/${repo}/resolve/${rev}/${rpath}"
+    [ -f "$dest" ] || die "curl fallback produced no file at $dest"
 }
 
 ver_ge() {  # ver_ge HAVE WANT -> 0 if HAVE >= WANT (dotted numeric compare)
