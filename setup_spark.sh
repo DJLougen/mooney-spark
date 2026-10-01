@@ -333,6 +333,7 @@ build_ds4() {
         fi
     fi
 
+    DS4_SERVER_BIN="$src/ds4/ds4-server"
     if [ "$SKIP_BUILD" = "1" ]; then log "SKIP_BUILD=1: not building"; return 0; fi
     # CUDA_ARCH=sm_121 is MANDATORY: upstream's default arch emits ptxas-fatal
     # m16n8k32 PTX on GB10. `make cuda-spark` already defaults to sm_121; we
@@ -344,7 +345,6 @@ build_ds4() {
         "$MEMGUARD" --min-start-gib 20 --soft-gib 12 --hard-gib 8 --interval-seconds 2 \
             -- make -C "$src/ds4" cuda-spark CUDA_ARCH=sm_121 -j8
     fi
-    DS4_SERVER_BIN="$src/ds4/ds4-server"
     log "ds4-server binary: $DS4_SERVER_BIN"
 }
 
@@ -372,6 +372,7 @@ build_llamacpp() {
         log "llama.cpp HEAD: ${head:-unknown} (pin: $LLAMA_PIN_SHA)"
         [ -n "$head" ] && [ "$head" = "$LLAMA_PIN_SHA" ] || warn "llama.cpp HEAD does not equal pinned tip $LLAMA_PIN_SHA"
     fi
+    LLAMA_SERVER_BIN="$src/build/bin/llama-server"
     if [ "$SKIP_BUILD" = "1" ]; then log "SKIP_BUILD=1: not building"; return 0; fi
     # Exact configure from the port handoff; sm_121a-real on GB10.
     log "configuring (GGML_CUDA, CMAKE_CUDA_ARCHITECTURES=121a-real)"
@@ -383,7 +384,6 @@ build_llamacpp() {
         "$MEMGUARD" --min-start-gib 20 --soft-gib 12 --hard-gib 8 --interval-seconds 2 \
             -- nice -n 10 ninja -C "$src/build" -j12 llama-server llama-cli
     fi
-    LLAMA_SERVER_BIN="$src/build/bin/llama-server"
     log "llama-server binary: $LLAMA_SERVER_BIN"
 }
 
