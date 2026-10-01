@@ -506,7 +506,7 @@ write_launchers() {
     if [ "$RUNTIME" = "ds4" ]; then
         local out="${LAUNCH_DIR}/serve_ds4.sh"
         if [ "$DRY_RUN" = "1" ]; then
-            printf 'setup_spark: [dry-run] write %s: ds4-server -m shard1 --vision mmproj --mtp-model mtp --mtp-draft 2 --cuda --ctx 32768 --host 127.0.0.1 --port 8000, under memguard (min-start 60 / soft 30 / hard 22 GiB)\n' "$out"
+            printf 'setup_spark: [dry-run] write %s: ds4-server -m shard1 --mtp-model mtp --mtp-draft 2 --cuda --ctx 32768 --host 127.0.0.1 --port 8000, under memguard (min-start 60 / soft 30 / hard 22 GiB)\n' "$out"
         else
             cat > "$out" <<EOF
 #!/usr/bin/env bash
@@ -523,7 +523,6 @@ exec "${MEMGUARD}" \\
     -- \\
 "${DS4_SERVER_BIN:-${ENGINE_DIR}/cudafast/ds4/ds4-server}" \\
     -m "${shard1}" \\
-    --vision "${mmproj}" \\
     --mtp-model "${mtp}" \\
     --mtp-draft "\${DS4_MTP_DRAFT:-2}" \\
     --cuda --ctx "\${DS4_CTX:-32768}" \\
