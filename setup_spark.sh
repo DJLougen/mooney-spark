@@ -375,7 +375,7 @@ build_llamacpp() {
     if [ "$SKIP_BUILD" = "1" ]; then log "SKIP_BUILD=1: not building"; return 0; fi
     # Exact configure from the port handoff; sm_121a-real on GB10.
     log "configuring (GGML_CUDA, CMAKE_CUDA_ARCHITECTURES=121a-real)"
-    run cmake -S "$src" -B "$src/build" -DCMAKE_BUILD_TYPE=Release \
+    run cmake -S "$src" -B "$src/build" -G Ninja -DCMAKE_BUILD_TYPE=Release \
         -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=121a-real -DLLAMA_BUILD_TESTS=OFF
     if [ "$DRY_RUN" = "1" ]; then
         printf 'setup_spark: [dry-run] %s --min-start-gib 20 --soft-gib 12 --hard-gib 8 -- nice -n 10 ninja -C %s/build -j12 llama-server llama-cli\n' "$MEMGUARD" "$src"
