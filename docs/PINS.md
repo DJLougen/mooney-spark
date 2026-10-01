@@ -45,7 +45,7 @@ either source passes the same final pin check.
 
 | engine | base | our branch/tip | delivery |
 |---|---|---|---|
-| ds4 / cuda.fast | `Layr-Labs/cudafast-qwen38-125b-a6b-engine` @ `5707d4f23362a7208483028e6d34519267266729` (vendored `Layr-Labs/ds4` @ `5f36517cf15c6b5b780be69a8f0532545e3b9326`) | `lbf/pq2-rot`, release tip `a77755c658e5765e85c2bc3adf3d20807c979228` on GitHub (code of `8811b9a7` incl. the qwen4exp vision merge; `a77755c6` only updates MOONEY.md) | standalone public fork `DJLougen/cudafast-qwen38-125b-a6b-engine` cloned by `DS4_GIT_URL` (default); `DS4_SRC_DIR` or vendored `engine/cudafast/` also work |
+| ds4 / cuda.fast | `Layr-Labs/cudafast-qwen38-125b-a6b-engine` @ `5707d4f23362a7208483028e6d34519267266729` (vendored `Layr-Labs/ds4` @ `5f36517cf15c6b5b780be69a8f0532545e3b9326`) | `lbf/pq2-rot`, release tip `2f623be89cad81e077ad221a43983a28cedb2702` on GitHub (`8811b9a7` incl. the qwen4exp vision merge; `a77755c6` MOONEY.md file names; `042ff7c4` sampled requests decode serially instead of erroring when the MTP head is loaded; `2f623be8` `/v1/models` lists `qwen3.8-flash-next`) | standalone public fork `DJLougen/cudafast-qwen38-125b-a6b-engine` cloned by `DS4_GIT_URL` (default); `DS4_SRC_DIR` or vendored `engine/cudafast/` also work |
 | llama.cpp fallback | `ggml-org/llama.cpp` `6c84c7d5` merged into PrismML fork `88c4bc60` | `lbf/flashnext-ternary` @ `d02f237354e4198f499b695c506c38315536ffb5` (code of `aba364b3`; only MOONEY.md differs) | `DJLougen/prism-llama.cpp` via `LLAMA_GIT_URL`/`LLAMA_SRC_DIR` |
 
 ## Toolchain (from the cuda.fast fixture)
