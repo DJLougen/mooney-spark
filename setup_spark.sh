@@ -341,6 +341,7 @@ build_ds4() {
     log "building ds4 (CUDA_ARCH=sm_121, under memguard)"
     if [ "$DRY_RUN" = "1" ]; then
         printf 'setup_spark: [dry-run] %s --min-start-gib 20 --soft-gib 12 --hard-gib 8 -- make -C %s/ds4 cuda-spark CUDA_ARCH=sm_121 -j8\n' "$MEMGUARD" "$src"
+    else
         "$MEMGUARD" --min-start-gib 20 --soft-gib 12 --hard-gib 8 --interval-seconds 2 \
             -- make -C "$src/ds4" cuda-spark CUDA_ARCH=sm_121 -j8
     fi
@@ -381,8 +382,12 @@ build_ds4_vision_helper() {
         done
         run cmake -S "$lsrc" -B "$lsrc/build" -G Ninja -DCMAKE_BUILD_TYPE=Release \
             -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=121a-real -DLLAMA_BUILD_TESTS=OFF
-        "$MEMGUARD" --min-start-gib 12 --soft-gib 8 --hard-gib 4 --interval-seconds 2 \
-            -- nice -n 10 ninja -C "$lsrc/build" -j12 mtmd llama
+        if [ "$DRY_RUN" = "1" ]; then
+            printf 'setup_spark: [dry-run] %s --min-start-gib 12 --soft-gib 8 --hard-gib 4 -- nice -n 10 ninja -C %s/build -j12 mtmd llama\n' "$MEMGUARD" "$lsrc"
+        else
+            "$MEMGUARD" --min-start-gib 12 --soft-gib 8 --hard-gib 4 --interval-seconds 2 \
+                -- nice -n 10 ninja -C "$lsrc/build" -j12 mtmd llama
+        fi
     fi
     log "compiling vision helper against $lsrc"
     if [ "$DRY_RUN" = "1" ]; then
