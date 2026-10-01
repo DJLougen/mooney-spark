@@ -9,7 +9,7 @@ tensors and `lowbitflash.rot.*` rotation metadata:
 
 | Runtime | Engine | Status |
 |---|---|---|
-| `ds4` (default, faster) | Our port of the cuda.fast ds4 engine ([`DJLougen/cudafast-qwen38-125b-a6b-engine`](https://github.com/DJLougen/cudafast-qwen38-125b-a6b-engine), branch `lbf/pq2-rot`, on top of `Layr-Labs/cudafast-qwen38-125b-a6b-engine` @ `5707d4f2`) | serial + MTP speculative decoding; text only for now |
+| `ds4` (default, faster) | Our port of the cuda.fast ds4 engine ([`DJLougen/cudafast-qwen38-125b-a6b-engine`](https://github.com/DJLougen/cudafast-qwen38-125b-a6b-engine), branch `lbf/pq2-rot`, on top of `Layr-Labs/cudafast-qwen38-125b-a6b-engine` @ `5707d4f2`) | serial + MTP speculative decoding + image input (MTP auto-off for image requests) |
 | `llama.cpp` (fallback) | Our prism-llama.cpp fork ([`DJLougen/prism-llama.cpp`](https://github.com/DJLougen/prism-llama.cpp), branch `lbf/flashnext-ternary` @ `aba364b3`) | serial; supports images via the `mmproj` file |
 
 **Model weights live in a separate repository** —

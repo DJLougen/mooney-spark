@@ -79,14 +79,14 @@ MTP_REPO_PATH="${MTP_REPO_PATH:-MTP/mtp-Qwen3.8-Flash-Next-shared-Q8_0.gguf}"
 
 # Engine pins.
 #   ds4: Layr-Labs/cudafast-qwen38-125b-a6b-engine @ 5707d4f2 + our lbf/pq2-rot
-#        branch (release tip 6f40fc80 on GitHub), delivered as a
+#        branch (release tip 8811b9a7 on GitHub (incl. qwen4exp vision merge)), delivered as a
 #        standalone public fork repo: DJLougen/cudafast-qwen38-125b-a6b-engine.
 #        DS4_SRC_DIR accepts any pre-existing checkout (incl. a git worktree);
 #        a vendored subtree at engine/cudafast/ is also auto-detected.
 DS4_SRC_DIR="${DS4_SRC_DIR:-}"
 DS4_GIT_URL="${DS4_GIT_URL:-https://github.com/DJLougen/cudafast-qwen38-125b-a6b-engine.git}"
 DS4_BRANCH="${DS4_BRANCH:-lbf/pq2-rot}"
-DS4_PIN_SHA="${DS4_PIN_SHA:-6f40fc80222aa0c078712b3bd9a7daf03cb98a0d}"
+DS4_PIN_SHA="${DS4_PIN_SHA:-8811b9a746a3b8494f633e51f1bf1c2bfb379d92}"
 #   llama.cpp fallback: our prism-llama.cpp fork.
 LLAMA_SRC_DIR="${LLAMA_SRC_DIR:-}"
 LLAMA_GIT_URL="${LLAMA_GIT_URL:-https://github.com/DJLougen/prism-llama.cpp.git}"
