@@ -506,7 +506,7 @@ write_launchers() {
     if [ "$RUNTIME" = "ds4" ]; then
         local out="${LAUNCH_DIR}/serve_ds4.sh"
         if [ "$DRY_RUN" = "1" ]; then
-            printf 'setup_spark: [dry-run] write %s: ds4-server -m shard1 --mtp-model mtp --mtp-draft 2 --cuda --ctx 32768 --host 127.0.0.1 --port 8000, under memguard (min-start 60 / soft 30 / hard 22 GiB)\n' "$out"
+            printf 'setup_spark: [dry-run] write %s: ds4-server -m shard1 --mtp-model mtp --mtp-draft 2 --cuda --ctx 262144 --host 127.0.0.1 --port 8000, under memguard (min-start 75 / soft 20 / hard 10 GiB)\n' "$out"
         else
             cat > "$out" <<EOF
 #!/usr/bin/env bash
@@ -517,15 +517,15 @@ write_launchers() {
 # serial, greedy output matches MTP-off -- see README/model card).
 set -euo pipefail
 exec "${MEMGUARD}" \\
-    --min-start-gib "\${MG_MIN_START_GIB:-60}" \\
-    --soft-gib "\${MG_SOFT_GIB:-30}" \\
-    --hard-gib "\${MG_HARD_GIB:-22}" \\
+    --min-start-gib "\${MG_MIN_START_GIB:-75}" \\
+    --soft-gib "\${MG_SOFT_GIB:-20}" \\
+    --hard-gib "\${MG_HARD_GIB:-10}" \\
     -- \\
 "${DS4_SERVER_BIN:-${ENGINE_DIR}/cudafast/ds4/ds4-server}" \\
     -m "${shard1}" \\
     --mtp-model "${mtp}" \\
     --mtp-draft "\${DS4_MTP_DRAFT:-2}" \\
-    --cuda --ctx "\${DS4_CTX:-32768}" \\
+    --cuda --ctx "\${DS4_CTX:-262144}" \\
     --host "\${DS4_HOST:-127.0.0.1}" --port "\${DS4_PORT:-8000}"
 EOF
             chmod +x "$out"

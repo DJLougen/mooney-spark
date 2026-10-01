@@ -55,8 +55,11 @@ anonymous HF rate limits): `export HF_TOKEN=hf_...` before running setup.
    the llama.cpp path doesn't use it.
 5. **Writes a launch script** that starts the server bound to `127.0.0.1`
    inside `scripts/memguard.sh`, a MemAvailable floor guard tuned for the
-   Spark's unified memory (start floor 60 GiB, soft 30, hard-kill 22 —
-   override with `MG_*` env vars).
+   Spark's unified memory (ds4 launcher: start floor 75 GiB, soft 20,
+   hard-kill 10 — sized so a full 256k request fits, whose worst measured
+   dip was ≈49 GiB; llama.cpp launcher: 60/30/22 — override with `MG_*`
+   env vars). The ds4 launcher defaults to `-c 262144` (full context;
+   `DS4_CTX` overrides).
 
 Other modes:
 
