@@ -4,7 +4,7 @@ Everything size/sha256 is fail-closed: a mismatch aborts setup.
 
 ## Model release (downloaded from the official repo at run time)
 
-- Repo: `DJLougen/Qwen3.8-Flash-Next-Mooney` (private until launch; `HF_TOKEN` required)
+- Repo: `DJLougen/Qwen3.8-Flash-Next-Mooney` (public at launch; `HF_TOKEN` only needed while private or for rate limits)
 - Revision env: `MODEL_REV` (default `main`)
 - File list + sha256: **read from `manifest.json` inside the repo at run time**.
   Never hardcode shard hashes — shard 1 was already replaced once
@@ -20,10 +20,10 @@ wins at run time):
 | `Qwen3.8-Flash-Next-Mooney-00003-of-00004.gguf` | 24,950,721,696 | `e9aeae2b04ee9975311a59a1cc2700ed29c1f67510c3b3d3ff4a205789a05480` |
 | `Qwen3.8-Flash-Next-Mooney-00004-of-00004.gguf` | 11,083,744,384 | `931df104d8a3b3a850837c8b9d712bf9493e5726941a33d4f29051db839b03fd` |
 | `mmproj-Qwen3.8-Flash-Next-Mooney-BF16.gguf` | 907,542,784 | `375f156fdc1232f994c42f43813861fac4fdc791f0440a36c85e87b6907a7eee` |
-| `mtp-Qwen3.8-Flash-Next-Q8_0.gguf` *(pending upload)* | 2,786,568,256 | `5ff54097406a905cf3a724c709124ceb0e3e10235ee862298969e91c96fa96e6` |
+| `mtp-Qwen3.8-Flash-Next-Q8_0.gguf` | 2,786,568,256 | `5ff54097406a905cf3a724c709124ceb0e3e10235ee862298969e91c96fa96e6` |
 
-The MTP head row lands in the manifest when it is uploaded; until then the
-script aborts on the missing manifest entry unless `--mtp-source upstream` is
+The MTP head row is already in the manifest. If it is ever missing (older
+manifest snapshots), the script aborts unless `--mtp-source upstream` is
 passed (see below).
 
 ## MTP draft head (ds4 runtime)
@@ -44,7 +44,7 @@ either source passes the same final pin check.
 
 | engine | base | our branch/tip | delivery |
 |---|---|---|---|
-| ds4 / cuda.fast | `Layr-Labs/cudafast-qwen38-125b-a6b-engine` @ `5707d4f23362a7208483028e6d34519267266729` (vendored `Layr-Labs/ds4` @ `5f36517cf15c6b5b780be69a8f0532545e3b9326`) | `lbf/pq2-rot`, tip `5a5195c386045155382c7706f5da591178c75b32` on GitHub (re-pin at release) | standalone public fork `DJLougen/cudafast-qwen38-125b-a6b-engine` cloned by `DS4_GIT_URL` (default); `DS4_SRC_DIR` or vendored `engine/cudafast/` also work |
+| ds4 / cuda.fast | `Layr-Labs/cudafast-qwen38-125b-a6b-engine` @ `5707d4f23362a7208483028e6d34519267266729` (vendored `Layr-Labs/ds4` @ `5f36517cf15c6b5b780be69a8f0532545e3b9326`) | `lbf/pq2-rot`, release tip `a6eddcc419f27bd43cd35bc676c206f1d8369b67` on GitHub | standalone public fork `DJLougen/cudafast-qwen38-125b-a6b-engine` cloned by `DS4_GIT_URL` (default); `DS4_SRC_DIR` or vendored `engine/cudafast/` also work |
 | llama.cpp fallback | `ggml-org/llama.cpp` `6c84c7d5` merged into PrismML fork `88c4bc60` | `lbf/flashnext-ternary` @ `e75099b28d7ab14454dec2872466ed60eeee8b12` | `DJLougen/prism-llama.cpp` via `LLAMA_GIT_URL`/`LLAMA_SRC_DIR` |
 
 ## Toolchain (from the cuda.fast fixture)

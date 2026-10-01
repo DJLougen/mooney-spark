@@ -19,15 +19,18 @@ License 1.0). This repo is code/scripts only (MIT).
 ## Quickstart
 
 ```bash
-# on the Spark, with an HF token that can read the model repo:
-export HF_TOKEN=hf_...
-./setup_spark.sh            # ds4 runtime (default)
+# on the Spark:
+git clone https://github.com/DJLougen/mooney-spark && cd mooney-spark
+./setup_spark.sh                      # ds4 fast runtime (default)
 # or:  ./setup_spark.sh --runtime llama.cpp
 
 # then:
 ~/mooney-spark/launch/serve_ds4.sh        # http://127.0.0.1:8000/v1 (OpenAI-compatible)
 # or: ~/mooney-spark/launch/serve_llamacpp.sh   # http://127.0.0.1:8089/v1
 ```
+
+`HF_TOKEN` is only needed while the model repo is private (or if you hit
+anonymous HF rate limits): `export HF_TOKEN=hf_...` before running setup.
 
 `setup_spark.sh` is one command that:
 
@@ -90,14 +93,17 @@ Everything installs under `$HOME/mooney-spark/` (override with `INSTALL_DIR`,
 |---|---|---|---|
 | Decode, short ctx | **45.8 tok/s** | 33.3 tok/s | 27.8 tok/s |
 | Decode, 4k ctx | **47.7 tok/s** | 30.6 tok/s | 25.8 tok/s |
-| Decode, 30k ctx | PENDING | 30.4 tok/s (32k) | 17.6 tok/s |
-| Model resident | PENDING | | 38.6 GiB MemAvailable drop |
+| Decode, 30–32k ctx | fix in flight | fix in flight | 17.6 tok/s (30k) |
+| Decode, 256k ctx | PENDING | PENDING | — |
+| Model resident | ≈39 GiB (MemAvailable delta incl. KV/context) | ≈39 GiB | 38.6 GiB MemAvailable drop |
 
 ds4: medians of 3 runs on non-repetitive prompts, greedy, MTP draft depth 1
 (output matches MTP-off). On the same engine and Spark, Unsloth's UD-Q4_K_XL
-build runs 23.3 tok/s serial / 32.9 tok/s with MTP. llama.cpp numbers are the
-model card's measured values. **PENDING** marks numbers still being measured;
-the script does not gate on them.
+build runs 23.3 tok/s serial / 32.9 tok/s with MTP — Mooney is 1.39×/1.43×
+faster at short context. llama.cpp numbers are the model card's measured
+values. A long-prompt bug above ≈27k tokens is being fixed; **PENDING**
+marks the 256k numbers still being measured — the script does not gate on
+either.
 
 ## Licensing
 

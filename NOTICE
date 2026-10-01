@@ -25,4 +25,5 @@ Qwen/Qwen3.8-Flash-Next). The MTP draft head ships in that same repo as
 mtp-Qwen3.8-Flash-Next-Q8_0.gguf; a fallback fetch path also reads the
 byte-identical pinned copy from unsloth/Qwen3.8-Flash-Next-GGUF (same license).
 
-Quantization compute courtesy of Lambda (lambda.ai).
+Quantization and evaluation compute courtesy of Lambda (lambda.ai) —
+thanks to Zach Mueller (x.com/TheZachMueller) for making it possible.
