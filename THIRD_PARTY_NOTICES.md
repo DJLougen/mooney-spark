@@ -9,7 +9,7 @@ components and artifacts.
 | Component | Upstream | Pin used | License |
 |---|---|---|---|
 | ds4 engine (fast runtime) | `Layr-Labs/cudafast-qwen38-125b-a6b-engine` — vendored `Layr-Labs/ds4` @ `5f36517cf15c6b5b780be69a8f0532545e3b9326`, descending from `antirez/ds4` @ `110afdd8` | base `5707d4f23362a7208483028e6d34519267266729` + branch `lbf/pq2-rot` of `DJLougen/cudafast-qwen38-125b-a6b-engine` | MIT |
-| llama.cpp fork (fallback runtime) | `ggml-org/llama.cpp` merge-base `6c84c7d5` merged into PrismML's fork `88c4bc60` (branch `lbf/flashnext-ternary`) | `e75099b28d7ab14454dec2872466ed60eeee8b12` (branch `lbf/flashnext-ternary` of `DJLougen/prism-llama.cpp`) | MIT |
+| llama.cpp fork (fallback runtime) | `ggml-org/llama.cpp` merge-base `6c84c7d5` merged into PrismML's fork `88c4bc60` (branch `lbf/flashnext-ternary`) | `aba364b32bab16207dfa51f897d860ea3f47fd60` (branch `lbf/flashnext-ternary` of `DJLougen/prism-llama.cpp`) | MIT |
 
 The MIT license texts ship inside each upstream tree; see
 `engine/README.md` for exactly how each source is included.
