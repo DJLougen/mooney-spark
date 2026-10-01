@@ -111,8 +111,10 @@ Everything installs under `$HOME/mooney-spark/` (override with `INSTALL_DIR`,
 | Decode, 256k ctx | 32.6 tok/s† | 25.0 tok/s† | — |
 | Resident @ ctx | 57.1 GiB @ 256k | 42.1 GiB @ 32k · 55.4 GiB @ 256k | ≈39 GiB @ 32k |
 
-ds4: medians of 3 runs on non-repetitive prompts, greedy, MTP draft depth 1
-(output sha-identical to MTP-off at every measured depth). On the same engine
+ds4: medians of 3 runs on non-repetitive prompts, greedy, MTP draft depth 1,
+measured on engine 8811b9a7 (approximate MTP verify; being re-measured on the
+exact c9e0679f default). Since c9e0679f, greedy MTP output is token-identical to
+MTP-off on 15/15 test prompts up to 128k context. On the same engine
 and Spark, Unsloth's UD-Q4_K_XL build runs 23.3 tok/s serial / 32.9 tok/s with
 MTP — Mooney is 1.39×/1.43× faster at short context. Fast-engine prefill
 ≈1,045 tok/s (32k) → ≈926 tok/s (256k). llama.cpp numbers are the model
