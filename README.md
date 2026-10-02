@@ -101,28 +101,28 @@ Everything installs under `$HOME/mooney-spark/` (override with `INSTALL_DIR`,
 
 ## Expected memory and speed (measured, DGX Spark)
 
-| | ds4 + MTP (depth 1) | ds4 serial | llama.cpp fork |
+| | ds4 + MTP (default, `--mtp-draft 3`) | ds4 without MTP | llama.cpp fork |
 |---|---|---|---|
-| Decode, short ctx | **45.8 tok/s** | 33.3 tok/s | 27.8 tok/s |
-| Decode, 4k ctx | **47.7 tok/s** | 30.6 tok/s | 25.8 tok/s |
-| Decode, 32k ctx | ≈41.5 tok/s* | 28.3 tok/s* | 17.6 tok/s (30k) |
-| Decode, 64k ctx | 40.8–44.5 tok/s | 27.9 tok/s | — |
-| Decode, 128k ctx | 32.3–36.8 tok/s | 27.1 tok/s | — |
-| Decode, 256k ctx | 32.6 tok/s† | 25.0 tok/s† | — |
-| Resident @ ctx | 57.1 GiB @ 256k | 42.1 GiB @ 32k · 55.4 GiB @ 256k | ≈39 GiB @ 32k |
+| Decode, short ctx | **50.7 tok/s** | 31.5 tok/s | 27.8 tok/s |
+| Decode, 4k ctx | **46.4 tok/s** | 27.8 tok/s | 25.8 tok/s |
+| Decode, 32k ctx | **40.5 tok/s** | 27.2 tok/s | 17.6 tok/s (30k) |
+| Decode, 64k ctx | **41.2 tok/s** | 26.7 tok/s | — |
+| Decode, 128k ctx | **39.7 tok/s** | 25.8 tok/s | — |
+| Decode, 256k ctx | **40.5 tok/s** | 24.3 tok/s | — |
+| Memory at load | 60.8 GiB @ `-c 262144` | 57.8 GiB @ `-c 262144` · 42.1 GiB @ 32k | ≈39 GiB @ 32k |
 
-ds4: medians of 3 runs on non-repetitive prompts, greedy, MTP draft depth 1,
-measured on engine 8811b9a7 (approximate MTP verify; being re-measured on the
-exact c9e0679f default). Since c9e0679f, greedy MTP output is token-identical to
-MTP-off on 15/15 test prompts up to 128k context. On the same engine
-and Spark, Unsloth's UD-Q4_K_XL build runs 23.3 tok/s serial / 32.9 tok/s with
-MTP — Mooney is 1.39×/1.43× faster at short context. Fast-engine prefill
-≈1,045 tok/s (32k) → ≈926 tok/s (256k). llama.cpp numbers are the model
-card's measured values.
-\* 32k decode measured over a 75-token generation (early stop).
-† 256k decode measured over a 21-token generation — indicative, not
-steady-state. The ds4 launcher defaults to `-c 262144`; a full-length request
-stays ≈49 GiB+ MemAvailable under the tuned memguard floors.
+ds4: engine c9e0679f through `ds4-server` with this launcher's settings, greedy
+(temperature 0), median of 3 runs that each generate exactly 128 tokens; held-out
+documents with a question at the end; 256k = a 256,457-token prompt. Greedy MTP
+output is token-identical to MTP-off on 15/15 test prompts up to 128k context.
+`--mtp-draft 2` (draft depth 1) measures 48.9 / 43.0 / 39.0 / 38.9 / 37.7 /
+36.9 tok/s at the same contexts; set `DS4_MTP_DRAFT=2` to use it. MTP only
+speeds up greedy requests: sampled requests (temperature > 0, including the
+server default) run at the no-MTP speed. Memory = MemAvailable drop at load
+(the 32k value is from the earlier campaign). llama.cpp numbers are the model
+card's measured values. For comparison, Unsloth's 4-bit UD-Q4_K_XL build on the
+stock cuda.fast engine measured 30.4 / 27.3 tok/s (short / 4k) without MTP on
+the same harness, so Mooney's advantage is memory, not single-stream speed.
 
 ## Licensing
 

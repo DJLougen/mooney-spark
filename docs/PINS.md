@@ -36,7 +36,7 @@ passed (see below).
 | size | 2,786,568,256 B |
 | sha256 | `5ff54097406a905cf3a724c709124ceb0e3e10235ee862298969e91c96fa96e6` |
 | pin authority | `fixtures/qwen3_8_125b_a6b_track.json` in the cuda.fast repo (`target.files[]` + `mtp_head` block) |
-| ds4 flag | `--mtp-model <file> --mtp-draft 2` (= MTP depth 1; contract permits draft 1..6) |
+| ds4 flag | `--mtp-model <file> --mtp-draft 3` (= MTP depth 2, launcher default; `DS4_MTP_DRAFT=2` for depth 1; contract permits draft 1..6) |
 
 The manifest entry and the unsloth file are byte-identical (same sha256), so
 either source passes the same final pin check.
